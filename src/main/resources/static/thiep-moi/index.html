@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chỉnh sửa thiệp mời</title>
+    <link rel="stylesheet" href="/thiep-moi/styles.css">
+</head>
+<body>
+<div class="dashboard-shell">
+    <aside class="sidebar" aria-label="Danh mục chỉnh sửa">
+        <button class="nav-item active" type="button" data-panel="couple">
+            <span class="nav-icon">♔</span>
+            <span>Thông tin cặp đôi</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="event">
+            <span class="nav-icon">▦</span>
+            <span>Sự kiện</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="photos">
+            <span class="nav-icon">▧</span>
+            <span>Hình ảnh</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="colors">
+            <span class="nav-icon">◉</span>
+            <span>Màu sắc</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="music">
+            <span class="nav-icon">♪</span>
+            <span>Âm nhạc</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="rsvp">
+            <span class="nav-icon">✉</span>
+            <span>RSVP</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="share">
+            <span class="nav-icon">⌯</span>
+            <span>Chia sẻ</span>
+        </button>
+        <div class="sidebar-flower" aria-hidden="true"></div>
+    </aside>
+
+    <main class="preview-stage">
+        <section class="card-preview" aria-label="Thiệp mời đang chỉnh sửa">
+            <div class="photo-row">
+                <button class="polaroid tilt-left image-picker" type="button" data-image-index="0" aria-label="Chọn ảnh cưới bên trái">
+                    <img id="previewImage0" alt="Ảnh cưới bên trái">
+                    <span class="replace-hint">Đổi ảnh</span>
+                </button>
+                <button class="polaroid tilt-right image-picker" type="button" data-image-index="1" aria-label="Chọn ảnh cưới bên phải">
+                    <img id="previewImage1" alt="Ảnh cưới bên phải">
+                    <span class="replace-hint">Đổi ảnh</span>
+                </button>
+                <div class="wax-seal">囍</div>
+            </div>
+
+            <div class="name-block">
+                <div>
+                    <p class="label">Chú rể</p>
+                    <h1 id="groomNamePreview">Minh Khang</h1>
+                </div>
+                <div class="divider">
+                    <span></span>
+                    <strong>♡</strong>
+                    <span></span>
+                </div>
+                <div>
+                    <p class="label">Cô dâu</p>
+                    <h1 id="brideNamePreview">Khánh Ly</h1>
+                </div>
+            </div>
+
+            <div class="event-title">Lễ thành hôn</div>
+            <div class="date-grid">
+                <div>
+                    <span>Chủ nhật</span>
+                    <strong id="weekdayPreview">Chủ nhật</strong>
+                </div>
+                <div class="date-center">
+                    <span id="monthPreview">Tháng 12</span>
+                    <strong id="dayPreview">20</strong>
+                    <span id="yearPreview">2026</span>
+                </div>
+                <div>
+                    <span>Giờ</span>
+                    <strong id="timePreview">10:30</strong>
+                </div>
+            </div>
+            <p class="venue-line" id="venuePreview">Diamond Palace, Hà Nội</p>
+            <p class="invite-copy" id="messagePreview">Trân trọng kính mời Quý khách đến chung vui cùng gia đình chúng tôi trong ngày trọng đại.</p>
+        </section>
+
+        <div class="palette" aria-label="Chọn màu chủ đạo">
+            <button class="color-dot active" type="button" data-color="#315f5a" style="--dot:#315f5a"></button>
+            <button class="color-dot" type="button" data-color="#8f334d" style="--dot:#8f334d"></button>
+            <button class="color-dot" type="button" data-color="#293d59" style="--dot:#293d59"></button>
+            <button class="color-dot" type="button" data-color="#8b632b" style="--dot:#8b632b"></button>
+            <button class="color-dot" type="button" data-color="#c2b39d" style="--dot:#c2b39d"></button>
+        </div>
+
+        <nav class="bottom-tabs" aria-label="Lối tắt chỉnh sửa">
+            <button class="tab-button active" type="button" data-panel="photos">▧ Ảnh bìa</button>
+            <button class="tab-button" type="button" data-panel="couple">♔ Gia đình</button>
+            <button class="tab-button" type="button" data-panel="event">▦ Sự kiện</button>
+            <button class="tab-button" type="button" data-panel="map">⌖ Bản đồ</button>
+            <button class="tab-button" type="button" data-panel="album">▧ Album</button>
+        </nav>
+    </main>
+
+    <aside class="editor-panel" aria-label="Bảng chỉnh sửa thông tin">
+        <div class="panel-header">
+            <h2>Chỉnh sửa thông tin</h2>
+            <span>⌃</span>
+        </div>
+
+        <div class="form-grid">
+            <label>
+                Tên chú rể
+                <input id="groomNameInput" type="text" value="Minh Khang">
+            </label>
+            <label>
+                Tên cô dâu
+                <input id="brideNameInput" type="text" value="Khánh Ly">
+            </label>
+            <div class="two-cols">
+                <label>
+                    Ngày cưới
+                    <input id="weddingDateInput" type="date" value="2026-12-20">
+                </label>
+                <label>
+                    Giờ tổ chức
+                    <input id="weddingTimeInput" type="time" value="10:30">
+                </label>
+            </div>
+            <label>
+                Địa điểm
+                <input id="venueInput" type="text" value="Diamond Palace, Hà Nội">
+            </label>
+            <label>
+                Mô tả ngắn / lời mời
+                <textarea id="messageInput" rows="4">Trân trọng kính mời Quý khách đến chung vui cùng gia đình chúng tôi trong ngày trọng đại.</textarea>
+            </label>
+        </div>
+
+        <section class="photo-editor">
+            <div class="section-line">
+                <span>Ảnh</span>
+                <small id="photoCount">2 / 10 ảnh</small>
+            </div>
+            <div class="photo-strip">
+                <button class="add-photo image-picker" type="button" data-image-index="0">
+                    <span>＋</span>
+                    Thêm ảnh
+                </button>
+                <button class="thumb image-picker active" type="button" data-image-index="0">
+                    <img id="thumbImage0" alt="Ảnh bìa 1">
+                </button>
+                <button class="thumb image-picker" type="button" data-image-index="1">
+                    <img id="thumbImage1" alt="Ảnh bìa 2">
+                </button>
+                <button class="thumb image-picker" type="button" data-image-index="2">
+                    <img id="thumbImage2" alt="Ảnh album">
+                </button>
+            </div>
+        </section>
+
+        <label class="select-field">
+            Chọn font chữ
+            <select id="fontSelect">
+                <option value="'Great Vibes', 'Segoe Script', cursive">Great Vibes</option>
+                <option value="'Georgia', serif">Georgia</option>
+                <option value="'Segoe UI', sans-serif">Thanh lịch</option>
+            </select>
+        </label>
+
+        <section class="color-editor">
+            <div class="section-line">
+                <span>Chọn màu chủ đạo</span>
+            </div>
+            <div class="inline-colors">
+                <button class="color-dot active" type="button" data-color="#315f5a" style="--dot:#315f5a"></button>
+                <button class="color-dot" type="button" data-color="#8f334d" style="--dot:#8f334d"></button>
+                <button class="color-dot" type="button" data-color="#293d59" style="--dot:#293d59"></button>
+                <button class="color-dot" type="button" data-color="#8b632b" style="--dot:#8b632b"></button>
+                <button class="color-dot" type="button" data-color="#c2b39d" style="--dot:#c2b39d"></button>
+            </div>
+        </section>
+
+        <label class="toggle-row">
+            <span>
+                Hiển thị RSVP
+                <small>Bật để hiển thị form RSVP trên thiệp</small>
+            </span>
+            <input id="rsvpToggle" type="checkbox" checked>
+        </label>
+    </aside>
+</div>
+
+<input id="imageInput" type="file" accept="image/*" hidden>
+<script src="/thiep-moi/app.js"></script>
+</body>
+</html>
