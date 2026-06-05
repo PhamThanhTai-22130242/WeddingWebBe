@@ -1,9 +1,13 @@
 package com.example.wedding.service;
 
 import com.example.wedding.dto.WeddingCardDetailResponse;
+import com.example.wedding.dto.WeddingCardWishManagementResponse;
+import com.example.wedding.dto.WishRequest;
+import com.example.wedding.dto.WishVisibilityRequest;
 import com.example.wedding.exception.NotFoundException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,13 +17,16 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 @Service
 public class WeddingCardService {
     private final JdbcTemplate jdbcTemplate;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public WeddingCardService(JdbcTemplate jdbcTemplate) {
+    public WeddingCardService(JdbcTemplate jdbcTemplate, SimpMessagingTemplate messagingTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional(readOnly = true)
@@ -47,8 +54,9 @@ public class WeddingCardService {
                         order by wedding_event_id asc
                         """, (rs, rowNum) -> mapEvent(rs), base.id()),
                 jdbcTemplate.query("""
-                        select cm.card_media_id, cm.img_url, cm.number
+                        select cm.card_media_id, tms.slot_key, cm.img_url, cm.number
                         from card_media cm
+                        left join tempate_media_slots tms on tms.template_media_id = cm.template_media_id
                         where cm.wedding_id = ?
                         order by cm.number asc, cm.card_media_id asc
                         """, (rs, rowNum) -> mapMedia(rs), base.id()),
@@ -66,6 +74,70 @@ public class WeddingCardService {
                         order by `created-at` desc
                         """, (rs, rowNum) -> mapWish(rs), base.id())
         );
+    }
+
+    @Transactional
+    public WeddingCardDetailResponse.WishResponse createWish(String slug, WishRequest request) {
+        WeddingCardBase base = findBaseBySlug(slug);
+        String guestName = request == null ? "" : trim(request.name());
+        String message = request == null ? "" : trim(request.message());
+
+        if (guestName.isEmpty() || message.isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập tên và lời chúc");
+        }
+        if (guestName.length() > 30) {
+            throw new IllegalArgumentException("Tên của bạn không được quá 30 ký tự");
+        }
+        if (message.length() > 300) {
+            throw new IllegalArgumentException("Lời chúc không được quá 300 ký tự");
+        }
+
+        WeddingCardDetailResponse.WishResponse response = new WeddingCardDetailResponse.WishResponse(
+                guestName,
+                message,
+                true
+        );
+
+        jdbcTemplate.update("""
+                insert into wishes (wedding_id, guest_name, message, is_approved)
+                values (?, ?, ?, 1)
+                """, base.id(), guestName, message);
+
+        messagingTemplate.convertAndSend("/topic/wedding-cards/" + base.slug() + "/wishes", response);
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<WeddingCardWishManagementResponse> getWishesForManagement(String slug) {
+        WeddingCardBase base = findBaseBySlug(slug);
+
+        return jdbcTemplate.query("""
+                select wish_id, guest_name, message, is_approved
+                from wishes
+                where wedding_id = ?
+                order by wish_id desc
+                """, (rs, rowNum) -> mapWishManagement(rs), base.id());
+    }
+
+    @Transactional
+    public WeddingCardWishManagementResponse updateWishVisibility(String slug, Long wishId, WishVisibilityRequest request) {
+        WeddingCardBase base = findBaseBySlug(slug);
+        boolean approved = request != null && Boolean.TRUE.equals(request.approved());
+
+        int updated = jdbcTemplate.update("""
+                update wishes
+                set is_approved = ?
+                where wish_id = ? and wedding_id = ?
+                """, approved, wishId, base.id());
+        if (updated == 0) {
+            throw new NotFoundException("Không tìm thấy lời chúc");
+        }
+
+        return jdbcTemplate.queryForObject("""
+                select wish_id, guest_name, message, is_approved
+                from wishes
+                where wish_id = ? and wedding_id = ?
+                """, (rs, rowNum) -> mapWishManagement(rs), wishId, base.id());
     }
 
     private WeddingCardBase findBaseBySlug(String slug) {
@@ -90,6 +162,7 @@ public class WeddingCardService {
 
     private WeddingCardBase mapBase(ResultSet rs) throws SQLException {
         WeddingCardDetailResponse.TemplateResponse template = new WeddingCardDetailResponse.TemplateResponse(
+                rs.getLong("template_id"),
                 rs.getString("template_name"),
                 rs.getString("template_code"),
                 rs.getString("preview_img")
@@ -142,6 +215,7 @@ public class WeddingCardService {
 
     private WeddingCardDetailResponse.MediaResponse mapMedia(ResultSet rs) throws SQLException {
         return new WeddingCardDetailResponse.MediaResponse(
+                rs.getString("slot_key"),
                 rs.getString("img_url"),
                 getInteger(rs, "number")
         );
@@ -166,6 +240,15 @@ public class WeddingCardService {
         );
     }
 
+    private WeddingCardWishManagementResponse mapWishManagement(ResultSet rs) throws SQLException {
+        return new WeddingCardWishManagementResponse(
+                rs.getLong("wish_id"),
+                rs.getString("guest_name"),
+                rs.getString("message"),
+                getBoolean(rs, "is_approved")
+        );
+    }
+
     private Long getLong(ResultSet rs, String column) throws SQLException {
         long value = rs.getLong(column);
         return rs.wasNull() ? null : value;
@@ -179,6 +262,10 @@ public class WeddingCardService {
     private Boolean getBoolean(ResultSet rs, String column) throws SQLException {
         boolean value = rs.getBoolean(column);
         return rs.wasNull() ? null : value;
+    }
+
+    private String trim(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private LocalDate getLocalDate(ResultSet rs, String column) throws SQLException {

@@ -18,6 +18,7 @@ public record WeddingCardDetailResponse(
         List<WishResponse> wishes
 ) {
     public record TemplateResponse(
+            Long id,
             String name,
             String code,
             String previewImg
@@ -57,6 +58,7 @@ public record WeddingCardDetailResponse(
     }
 
     public record MediaResponse(
+            String slotKey,
             String imgUrl,
             Integer number
     ) {

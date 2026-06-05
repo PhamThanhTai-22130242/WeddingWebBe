@@ -9,7 +9,6 @@ import com.example.wedding.dto.GoogleTokenInfo;
 import com.example.wedding.dto.LoginRequest;
 import com.example.wedding.dto.RegisterRequest;
 import com.example.wedding.dto.UserResponse;
-import com.example.wedding.exception.ForbiddenException;
 import com.example.wedding.exception.NotFoundException;
 import com.example.wedding.exception.UnauthorizedException;
 import com.example.wedding.repository.UserRepository;
@@ -36,13 +35,15 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final GoogleTokenVerifier googleTokenVerifier;
+    private final AccessTokenUserService accessTokenUserService;
 
-    public UserService(UserRepository userRepository, JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder, JwtService jwtService, GoogleTokenVerifier googleTokenVerifier) {
+    public UserService(UserRepository userRepository, JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder, JwtService jwtService, GoogleTokenVerifier googleTokenVerifier, AccessTokenUserService accessTokenUserService) {
         this.userRepository = userRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.googleTokenVerifier = googleTokenVerifier;
+        this.accessTokenUserService = accessTokenUserService;
     }
 
     @Transactional
@@ -132,10 +133,10 @@ public class UserService {
     }
 
     @Transactional
-    public AdminUserResponse blockUserForAdmin(Long userId, String authorizationHeader) {
-        JwtService.TokenPayload admin = verifyAdminAccess(authorizationHeader);
-        if (admin.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("Admin không thể tự block tài khoản của mình");
+    public AdminUserResponse lockUserForAdmin(Long userId, String authorizationHeader) {
+        AccessTokenUserService.CurrentUser admin = verifyAdminAccess(authorizationHeader);
+        if (admin.id().equals(userId)) {
+            throw new IllegalArgumentException("Admin không thể tự khóa tài khoản của mình");
         }
 
         int updatedRows = jdbcTemplate.update(
@@ -152,21 +153,25 @@ public class UserService {
         return findAdminUserById(userId);
     }
 
-    private JwtService.TokenPayload verifyAdminAccess(String authorizationHeader) {
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            throw new UnauthorizedException("Thiếu access token");
+    @Transactional
+    public AdminUserResponse unlockUserForAdmin(Long userId, String authorizationHeader) {
+        verifyAdminAccess(authorizationHeader);
+
+        int updatedRows = jdbcTemplate.update(
+                "update user set status = ?, update_at = ? where id_user = ?",
+                "ACTIVE",
+                LocalDateTime.now(),
+                userId
+        );
+        if (updatedRows == 0) {
+            throw new NotFoundException("Tài khoản không tồn tại");
         }
 
-        String accessToken = authorizationHeader.substring("Bearer ".length()).trim();
-        if (accessToken.isBlank()) {
-            throw new UnauthorizedException("Thiếu access token");
-        }
+        return findAdminUserById(userId);
+    }
 
-        JwtService.TokenPayload payload = jwtService.verifyAccessToken(accessToken);
-        if (!"ADMIN".equalsIgnoreCase(payload.getRole())) {
-            throw new ForbiddenException("Không có quyền quản lý user");
-        }
-        return payload;
+    private AccessTokenUserService.CurrentUser verifyAdminAccess(String authorizationHeader) {
+        return accessTokenUserService.requireAdmin(authorizationHeader, "Không có quyền quản lý user");
     }
 
     private AdminUserResponse findAdminUserById(Long userId) {
@@ -194,8 +199,8 @@ public class UserService {
     }
 
     private void ensureUserActive(AuthenticatedUser user) {
-        if ("BLOCKED".equalsIgnoreCase(user.getStatus())) {
-            throw new UnauthorizedException("Tài khoản đã bị block");
+        if ("BLOCKED".equalsIgnoreCase(user.getStatus()) || "LOCKED".equalsIgnoreCase(user.getStatus())) {
+            throw new UnauthorizedException("Tài khoản đã bị khóa");
         }
     }
 

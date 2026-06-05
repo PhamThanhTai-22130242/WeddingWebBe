@@ -34,13 +34,23 @@ public class AdminUserController {
         return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS, users));
     }
 
-    @PatchMapping("/{userId}/block")
-    public ResponseEntity<APIResponse<AdminUserResponse>> blockUser(
+    @PatchMapping({"/{userId}/lock", "/{userId}/block"})
+    public ResponseEntity<APIResponse<AdminUserResponse>> lockUser(
             @PathVariable Long userId,
             @RequestHeader(name = "Authorization", required = false)
             String authorizationHeader
     ) {
-        AdminUserResponse user = userService.blockUserForAdmin(userId, authorizationHeader);
-        return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS.getCode(), "Block user thành công", user));
+        AdminUserResponse user = userService.lockUserForAdmin(userId, authorizationHeader);
+        return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS.getCode(), "Khóa tài khoản thành công", user));
+    }
+
+    @PatchMapping("/{userId}/unlock")
+    public ResponseEntity<APIResponse<AdminUserResponse>> unlockUser(
+            @PathVariable Long userId,
+            @RequestHeader(name = "Authorization", required = false)
+            String authorizationHeader
+    ) {
+        AdminUserResponse user = userService.unlockUserForAdmin(userId, authorizationHeader);
+        return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS.getCode(), "Mở khóa tài khoản thành công", user));
     }
 }
