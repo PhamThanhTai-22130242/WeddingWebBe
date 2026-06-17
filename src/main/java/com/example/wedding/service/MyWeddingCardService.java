@@ -6,6 +6,7 @@ import com.example.wedding.dto.SlugAvailabilityResponse;
 import com.example.wedding.dto.WeddingCardDetailResponse;
 import com.example.wedding.dto.WeddingCardWishManagementResponse;
 import com.example.wedding.dto.WishVisibilityRequest;
+import com.example.wedding.dto.RsvpResponse;
 import com.example.wedding.exception.ForbiddenException;
 import com.example.wedding.exception.NotFoundException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -85,6 +86,24 @@ public class MyWeddingCardService {
                 where wedding_id = ?
                 order by wish_id desc
                 """, (rs, rowNum) -> mapWishManagementResponse(rs), weddingId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RsvpResponse> getRsvps(Long weddingId, String authorizationHeader) {
+        Long userId = getCurrentUserId(authorizationHeader);
+        ensureOwnedByUser(weddingId, userId);
+
+        return jdbcTemplate.query("""
+                select rsvp_responses_id, fullname, status, created_at
+                from rsvp_responses
+                where wedding_id = ?
+                order by rsvp_responses_id desc
+                """, (rs, rowNum) -> new RsvpResponse(
+                        rs.getLong("rsvp_responses_id"),
+                        rs.getString("fullname"),
+                        rs.getString("status"),
+                        rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null
+                ), weddingId);
     }
 
     @Transactional
@@ -172,8 +191,8 @@ public class MyWeddingCardService {
 
         MyWeddingCardSaveRequest.CoupleRequest couple = request.couple();
         if (couple != null) {
-            insertPerson(weddingId, "groom", couple.groom(), couple.groom(), couple.groomRole());
-            insertPerson(weddingId, "bride", couple.bride(), couple.bride(), couple.brideRole());
+            insertPerson(weddingId, "groom", couple.groom(), couple.groom(), couple.groomRole(), couple.groomFather(), couple.groomMother());
+            insertPerson(weddingId, "bride", couple.bride(), couple.bride(), couple.brideRole(), couple.brideFather(), couple.brideMother());
         }
 
         MyWeddingCardSaveRequest.EventRequest event = request.event();
@@ -209,11 +228,11 @@ public class MyWeddingCardService {
         }
     }
 
-    private void insertPerson(Long weddingId, String role, String fullName, String shortName, String familyLabel) {
+    private void insertPerson(Long weddingId, String role, String fullName, String shortName, String familyLabel, String fatherName, String motherName) {
         jdbcTemplate.update("""
-                insert into card_people (wedding_id, role, full_name, short_name, family_lable)
-                values (?, ?, ?, ?, ?)
-                """, weddingId, role, fullName, shortName, familyLabel);
+                insert into card_people (wedding_id, role, full_name, short_name, family_lable, father_name, mother_name)
+                values (?, ?, ?, ?, ?, ?, ?)
+                """, weddingId, role, fullName, shortName, familyLabel, fatherName, motherName);
     }
 
     private Long ensureMediaSlot(String slotKey, int number) {

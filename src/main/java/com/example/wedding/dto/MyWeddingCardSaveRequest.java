@@ -21,7 +21,11 @@ public record MyWeddingCardSaveRequest(
             String groom,
             String bride,
             String groomRole,
-            String brideRole
+            String brideRole,
+            String groomFather,
+            String groomMother,
+            String brideFather,
+            String brideMother
     ) {
     }
 

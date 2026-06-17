@@ -6,6 +6,7 @@ import com.example.wedding.dto.WeddingCardDetailResponse;
 import com.example.wedding.dto.WeddingCardWishManagementResponse;
 import com.example.wedding.dto.WishRequest;
 import com.example.wedding.dto.WishVisibilityRequest;
+import com.example.wedding.dto.RsvpRequest;
 import com.example.wedding.service.WeddingCardService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -42,6 +43,15 @@ public class WeddingCardController {
     ) {
         WeddingCardDetailResponse.WishResponse wish = weddingCardService.createWish(slug, request);
         return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS, wish));
+    }
+
+    @PostMapping("/{slug}/rsvp")
+    public ResponseEntity<APIResponse<Void>> createRsvp(
+            @PathVariable String slug,
+            @RequestBody RsvpRequest request
+    ) {
+        weddingCardService.createRsvp(slug, request);
+        return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS, null));
     }
 
     @GetMapping("/{slug}/wishes/manage")

@@ -4,6 +4,7 @@ import com.example.wedding.dto.WeddingCardDetailResponse;
 import com.example.wedding.dto.WeddingCardWishManagementResponse;
 import com.example.wedding.dto.WishRequest;
 import com.example.wedding.dto.WishVisibilityRequest;
+import com.example.wedding.dto.RsvpRequest;
 import com.example.wedding.exception.NotFoundException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -92,19 +93,48 @@ public class WeddingCardService {
             throw new IllegalArgumentException("Lời chúc không được quá 300 ký tự");
         }
 
+        org.springframework.jdbc.support.GeneratedKeyHolder keyHolder = new org.springframework.jdbc.support.GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            java.sql.PreparedStatement ps = connection.prepareStatement("""
+                    insert into wishes (wedding_id, guest_name, message, is_approved)
+                    values (?, ?, ?, 1)
+                    """, java.sql.Statement.RETURN_GENERATED_KEYS);
+            ps.setLong(1, base.id());
+            ps.setString(2, guestName);
+            ps.setString(3, message);
+            return ps;
+        }, keyHolder);
+        
+        Long wishId = keyHolder.getKey() != null ? keyHolder.getKey().longValue() : null;
+
         WeddingCardDetailResponse.WishResponse response = new WeddingCardDetailResponse.WishResponse(
+                wishId,
                 guestName,
                 message,
                 true
         );
 
-        jdbcTemplate.update("""
-                insert into wishes (wedding_id, guest_name, message, is_approved)
-                values (?, ?, ?, 1)
-                """, base.id(), guestName, message);
-
         messagingTemplate.convertAndSend("/topic/wedding-cards/" + base.slug() + "/wishes", response);
         return response;
+    }
+
+    @Transactional
+    public void createRsvp(String slug, RsvpRequest request) {
+        WeddingCardBase base = findBaseBySlug(slug);
+        String guestName = request == null ? "" : trim(request.name());
+        String status = request == null ? "yes" : trim(request.attending());
+
+        if (guestName.isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập tên");
+        }
+        if (guestName.length() > 255) {
+            throw new IllegalArgumentException("Tên không được quá 255 ký tự");
+        }
+
+        jdbcTemplate.update("""
+                insert into rsvp_responses (wedding_id, fullname, status, created_at)
+                values (?, ?, ?, now())
+                """, base.id(), guestName, status);
     }
 
     @Transactional(readOnly = true)
@@ -234,6 +264,7 @@ public class WeddingCardService {
 
     private WeddingCardDetailResponse.WishResponse mapWish(ResultSet rs) throws SQLException {
         return new WeddingCardDetailResponse.WishResponse(
+                rs.getLong("wish_id"),
                 rs.getString("guest_name"),
                 rs.getString("message"),
                 getBoolean(rs, "is_approved")

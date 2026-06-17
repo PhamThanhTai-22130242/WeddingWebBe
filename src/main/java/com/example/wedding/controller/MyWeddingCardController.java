@@ -7,6 +7,7 @@ import com.example.wedding.dto.MyWeddingCardSaveRequest;
 import com.example.wedding.dto.SlugAvailabilityResponse;
 import com.example.wedding.dto.WeddingCardWishManagementResponse;
 import com.example.wedding.dto.WishVisibilityRequest;
+import com.example.wedding.dto.RsvpResponse;
 import com.example.wedding.service.MyWeddingCardService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -82,6 +83,15 @@ public class MyWeddingCardController {
                 request,
                 authorizationHeader
         );
+        return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS, response));
+    }
+
+    @GetMapping("/{weddingId}/rsvp")
+    public ResponseEntity<APIResponse<List<RsvpResponse>>> getRsvps(
+            @PathVariable Long weddingId,
+            @RequestHeader(name = "Authorization", required = false) String authorizationHeader
+    ) {
+        List<RsvpResponse> response = myWeddingCardService.getRsvps(weddingId, authorizationHeader);
         return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS, response));
     }
 
