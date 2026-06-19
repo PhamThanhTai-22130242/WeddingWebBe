@@ -17,6 +17,9 @@ public class DatabaseSchemaService {
         jdbcTemplate.execute("alter table wishes modify column message varchar(300) null");
         ensureTemplate("EmeraldInvitation", "Hỷ Sắc Vu Quy", "/EmeraldInvitation");
         ensureTemplate("RubyBasicInvitation", "Bến Tình Trăm Năm", "/RubyBasicInvitation");
+        ensureTemplate("CineLoveTraditionalInvitation", "Duyên Thắm Miệt Vườn", "/CineLoveTraditionalInvitation");
+        ensureTemplate("ElegantInvitation", "Trăm Năm Bến Đợi", "/tram-nam-ben-doi");
+        ensureTemplate("PinkWeddingInvitation", "Hoa Hảo Nguyệt Viên", "/THIEPMAUHONG");
     }
 
     private void ensureTemplate(String code, String name, String previewImg) {
