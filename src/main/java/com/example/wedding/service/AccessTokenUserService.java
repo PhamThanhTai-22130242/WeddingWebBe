@@ -22,6 +22,9 @@ public class AccessTokenUserService {
         if ("BLOCKED".equalsIgnoreCase(user.status()) || "LOCKED".equalsIgnoreCase(user.status())) {
             throw new UnauthorizedException("Tài khoản đã bị khóa");
         }
+        if (payload.getRole() == null || !payload.getRole().equalsIgnoreCase(user.role())) {
+            throw new UnauthorizedException("Quyền hạn đã thay đổi, vui lòng đăng nhập lại");
+        }
         return user;
     }
 

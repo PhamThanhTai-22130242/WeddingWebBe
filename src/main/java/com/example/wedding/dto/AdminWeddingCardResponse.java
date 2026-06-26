@@ -13,6 +13,9 @@ public record AdminWeddingCardResponse(
         String status,
         LocalDateTime createdAt,
         Long viewCount,
-        String previewImg
+        String previewImg,
+        String promoPrice,
+        String templateName,
+        Integer category
 ) {
 }

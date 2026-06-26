@@ -36,6 +36,8 @@ public class AdminWeddingCardController {
             @RequestParam(defaultValue = "") String query,
             @RequestParam(defaultValue = "all") String status,
             @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String creatorRole,
+            @RequestParam(defaultValue = "today") String dateFilter,
             @RequestParam(defaultValue = "created_desc") String sort
     ) {
         AdminWeddingCardPageResponse response = adminWeddingCardService.getWeddingCards(
@@ -45,9 +47,19 @@ public class AdminWeddingCardController {
                 query,
                 status,
                 userId,
+                creatorRole,
+                dateFilter,
                 sort
         );
         return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS, response));
+    }
+
+    @GetMapping("/templates/stats")
+    public ResponseEntity<APIResponse<Map<String, Long>>> getTemplateStats(
+            @RequestHeader(name = "Authorization", required = false) String authorizationHeader
+    ) {
+        Map<String, Long> stats = adminWeddingCardService.getTemplateStats(authorizationHeader);
+        return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS, stats));
     }
 
     @PatchMapping("/{weddingId}/status")

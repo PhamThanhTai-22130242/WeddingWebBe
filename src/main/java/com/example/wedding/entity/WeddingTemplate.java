@@ -38,6 +38,21 @@ public class WeddingTemplate {
     @Column(name = "is_active")
     private Boolean isActive;
 
+    @Size(max = 50)
+    @Column(name = "price", length = 50)
+    private String price;
+
+    @Size(max = 50)
+    @Column(name = "promo_price", length = 50)
+    private String promoPrice;
+
+    @Column(name = "category")
+    private Integer category;
+
+    @ColumnDefault("0")
+    @Column(name = "is_hidden")
+    private Boolean isHidden;
+
     @ColumnDefault("current_timestamp()")
     @Column(name = "created_at")
     private LocalDateTime createdAt;

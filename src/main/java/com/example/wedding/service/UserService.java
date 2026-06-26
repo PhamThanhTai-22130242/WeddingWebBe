@@ -344,4 +344,34 @@ public class UserService {
             throw new UnauthorizedException("Tài khoản không tồn tại");
         }
     }
+
+    @Transactional
+    public AdminUserResponse updateUserRoleForAdmin(Long userId, String role, String authorizationHeader) {
+        AccessTokenUserService.CurrentUser admin = verifyAdminAccess(authorizationHeader);
+        if (admin.id().equals(userId)) {
+            throw new IllegalArgumentException("Admin không thể tự thay đổi vai trò của mình");
+        }
+
+        if (role == null || role.isBlank()) {
+            throw new IllegalArgumentException("Vai trò không hợp lệ");
+        }
+
+        String normalizedRole = role.trim().toUpperCase();
+        if (!List.of("ADMIN", "USER", "SUPPORT").contains(normalizedRole)) {
+            throw new IllegalArgumentException("Vai trò không hợp lệ");
+        }
+
+        int updatedRows = jdbcTemplate.update(
+                "update user set role = ?, update_at = ? where id_user = ?",
+                normalizedRole,
+                LocalDateTime.now(),
+                userId
+        );
+        if (updatedRows == 0) {
+            throw new NotFoundException("Tài khoản không tồn tại");
+        }
+
+        revokeRefreshTokensByUserId(userId);
+        return findAdminUserById(userId);
+    }
 }
