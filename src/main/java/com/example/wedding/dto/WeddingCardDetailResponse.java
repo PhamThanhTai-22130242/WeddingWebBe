@@ -75,6 +75,7 @@ public record WeddingCardDetailResponse(
     }
 
     public record WishResponse(
+            Long wishId,
             String guestName,
             String message,
             Boolean isApproved

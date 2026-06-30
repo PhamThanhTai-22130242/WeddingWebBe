@@ -3,6 +3,7 @@ package com.example.wedding.service;
 import com.example.wedding.dto.AdminWeddingCardPageResponse;
 import com.example.wedding.dto.AdminWeddingCardResponse;
 import com.example.wedding.exception.NotFoundException;
+import com.example.wedding.exception.ForbiddenException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 public class AdminWeddingCardService {
@@ -33,6 +36,8 @@ public class AdminWeddingCardService {
             String query,
             String status,
             Long userId,
+            String creatorRole,
+            String dateFilter,
             String sort
     ) {
         verifyAdminAccess(authorizationHeader);
@@ -41,7 +46,7 @@ public class AdminWeddingCardService {
         int safeSize = Math.min(Math.max(1, size), 100);
         int offset = (safePage - 1) * safeSize;
         List<Object> params = new ArrayList<>();
-        String whereClause = buildWhereClause(query, status, userId, params);
+        String whereClause = buildWhereClause(query, status, userId, creatorRole, dateFilter, params);
         String orderBy = switch (sort == null ? "" : sort) {
             case "views_desc" -> "coalesce(cve.number_views, 0) desc, wc.wedding_id desc";
             case "created_asc" -> "created_at asc, wc.wedding_id asc";
@@ -65,7 +70,8 @@ public class AdminWeddingCardService {
                        coalesce(min(cp.created_at), u.created_at) as created_at,
                        max(case when cp.role = 'groom' then coalesce(cp.short_name, cp.full_name) end) as groom_name,
                        max(case when cp.role = 'bride' then coalesce(cp.short_name, cp.full_name) end) as bride_name,
-                       coalesce(cover.img_url, wt.preview_img) as preview_img
+                       coalesce(cover.img_url, wt.preview_img) as preview_img,
+                       wt.promo_price as promo_price, wt.name as template_name, wt.category as category
                 from wedding_card wc
                 join user u on u.id_user = wc.user_id
                 join wedding_templates wt on wt.template_id = wc.template_id
@@ -80,7 +86,8 @@ public class AdminWeddingCardService {
                 ) cover on cover.wedding_id = wc.wedding_id
                 %s
                 group by wc.wedding_id, wc.slug, wc.status, u.id_user, u.fullname, u.email,
-                         cve.number_views, u.created_at, cover.img_url, wt.preview_img
+                         cve.number_views, u.created_at, cover.img_url, wt.preview_img,
+                         wt.promo_price, wt.name, wt.category
                 order by %s
                 limit ? offset ?
                 """.formatted(whereClause, orderBy), (rs, rowNum) -> mapWeddingCard(rs), listParams.toArray());
@@ -124,7 +131,8 @@ public class AdminWeddingCardService {
                        coalesce(min(cp.created_at), u.created_at) as created_at,
                        max(case when cp.role = 'groom' then coalesce(cp.short_name, cp.full_name) end) as groom_name,
                        max(case when cp.role = 'bride' then coalesce(cp.short_name, cp.full_name) end) as bride_name,
-                       coalesce(cover.img_url, wt.preview_img) as preview_img
+                       coalesce(cover.img_url, wt.preview_img) as preview_img,
+                       wt.promo_price as promo_price, wt.name as template_name, wt.category as category
                 from wedding_card wc
                 join user u on u.id_user = wc.user_id
                 join wedding_templates wt on wt.template_id = wc.template_id
@@ -139,7 +147,8 @@ public class AdminWeddingCardService {
                 ) cover on cover.wedding_id = wc.wedding_id
                 where wc.wedding_id = ?
                 group by wc.wedding_id, wc.slug, wc.status, u.id_user, u.fullname, u.email,
-                         cve.number_views, u.created_at, cover.img_url, wt.preview_img
+                         cve.number_views, u.created_at, cover.img_url, wt.preview_img,
+                         wt.promo_price, wt.name, wt.category
                 """, (rs, rowNum) -> mapWeddingCard(rs), weddingId);
 
         if (cards.isEmpty()) {
@@ -162,7 +171,7 @@ public class AdminWeddingCardService {
         return normalizedStatus;
     }
 
-    private String buildWhereClause(String query, String status, Long userId, List<Object> params) {
+    private String buildWhereClause(String query, String status, Long userId, String creatorRole, String dateFilter, List<Object> params) {
         List<String> conditions = new ArrayList<>();
 
         if (query != null && !query.trim().isEmpty()) {
@@ -196,6 +205,28 @@ public class AdminWeddingCardService {
             params.add(userId);
         }
 
+        if (creatorRole != null && !creatorRole.isBlank()) {
+            if ("ADMIN".equalsIgnoreCase(creatorRole)) {
+                conditions.add("lower(u.role) = 'admin'");
+            } else if ("USER".equalsIgnoreCase(creatorRole)) {
+                conditions.add("coalesce(lower(u.role), '') != 'admin'");
+            }
+        }
+
+        if (dateFilter != null && !dateFilter.isBlank() && !"all".equalsIgnoreCase(dateFilter)) {
+            if ("today".equalsIgnoreCase(dateFilter)) {
+                conditions.add("date(coalesce((select min(created_at) from card_people cp where cp.wedding_id = wc.wedding_id), u.created_at)) = current_date()");
+            } else {
+                try {
+                    int days = Integer.parseInt(dateFilter.trim());
+                    conditions.add("coalesce((select min(created_at) from card_people cp where cp.wedding_id = wc.wedding_id), u.created_at) >= date_sub(now(), interval ? day)");
+                    params.add(days);
+                } catch (NumberFormatException e) {
+                    // ignore
+                }
+            }
+        }
+
         if (conditions.isEmpty()) {
             return "";
         }
@@ -214,16 +245,48 @@ public class AdminWeddingCardService {
                 rs.getString("status"),
                 getLocalDateTime(rs, "created_at"),
                 rs.getLong("view_count"),
-                rs.getString("preview_img")
+                rs.getString("preview_img"),
+                rs.getString("promo_price"),
+                rs.getString("template_name"),
+                rs.getInt("category")
         );
     }
 
     private AccessTokenUserService.CurrentUser verifyAdminAccess(String authorizationHeader) {
-        return accessTokenUserService.requireAdmin(authorizationHeader, "Không có quyền quản lý thiệp cưới");
+        AccessTokenUserService.CurrentUser user = accessTokenUserService.requireActiveUser(authorizationHeader);
+        if (!"ADMIN".equalsIgnoreCase(user.role()) && !"SUPPORT".equalsIgnoreCase(user.role())) {
+            throw new ForbiddenException("Không có quyền quản lý thiệp cưới");
+        }
+        return user;
     }
 
     private LocalDateTime getLocalDateTime(ResultSet rs, String column) throws SQLException {
         Timestamp timestamp = rs.getTimestamp(column);
         return timestamp == null ? null : timestamp.toLocalDateTime();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> getTemplateStats(String authorizationHeader) {
+        verifyAdminAccess(authorizationHeader);
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                select wt.code as template_code, count(wc.wedding_id) as active_count
+                from wedding_card wc
+                join wedding_templates wt on wt.template_id = wc.template_id
+                where lower(wc.status) = 'active'
+                group by wt.code
+                """);
+
+        Map<String, Long> stats = new HashMap<>();
+        for (Map<String, Object> row : rows) {
+            String code = (String) row.get("template_code");
+            Long count = 0L;
+            Object val = row.get("active_count");
+            if (val instanceof Number) {
+                count = ((Number) val).longValue();
+            }
+            stats.put(code, count);
+        }
+        return stats;
     }
 }

@@ -9,11 +9,13 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(originPatterns = "*", allowCredentials = "true")
 @RestController
@@ -52,5 +54,16 @@ public class AdminUserController {
     ) {
         AdminUserResponse user = userService.unlockUserForAdmin(userId, authorizationHeader);
         return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS.getCode(), "Mở khóa tài khoản thành công", user));
+    }
+
+    @PatchMapping("/{userId}/role")
+    public ResponseEntity<APIResponse<AdminUserResponse>> updateUserRole(
+            @PathVariable Long userId,
+            @RequestBody Map<String, String> request,
+            @RequestHeader(name = "Authorization", required = false)
+            String authorizationHeader
+    ) {
+        AdminUserResponse user = userService.updateUserRoleForAdmin(userId, request == null ? null : request.get("role"), authorizationHeader);
+        return ResponseEntity.ok(new APIResponse<>(ResponseStatus.SUCCESS.getCode(), "Cập nhật vai trò thành công", user));
     }
 }
